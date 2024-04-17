@@ -1,0 +1,3 @@
+[submodule "PQClean"]
+	path = PQClean
+	url = git@github.com:PQClean/PQClean.git
