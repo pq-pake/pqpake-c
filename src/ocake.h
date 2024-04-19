@@ -1,12 +1,12 @@
-#ifndef PAKE_CAKE_H
-#define PAKE_CAKE_H
+#ifndef PQPAKE_CAKE_H
+#define PQPAKE_CAKE_H
 #include <stdint.h>
 #include <string.h>
 #include "constants.h"
 
 typedef struct ocake_agent {
   uint32_t session_id;
-  uint8_t sym_key[PAKE_SYM_KEY_SIZE];
+  uint8_t sym_key[PQPAKE_SYM_KEY_SIZE];
   uint8_t* password;
   size_t password_size;
 
@@ -15,10 +15,10 @@ typedef struct ocake_agent {
   size_t bob_size;
   uint8_t* bob_name;
 
-  uint8_t pk[PAKE_PK_SIZE];
-  uint8_t epk[PAKE_EPK_SIZE];  // only used by alice
-  uint8_t sk[PAKE_SK_SIZE];    // only used by alice
-  uint8_t ss[PAKE_SHARED_SECRET_SIZE];
+  uint8_t pk[PQPAKE_PK_SIZE];
+  uint8_t epk[PQPAKE_EPK_SIZE];  // only used by alice
+  uint8_t sk[PQPAKE_SK_SIZE];    // only used by alice
+  uint8_t ss[PQPAKE_SHARED_SECRET_SIZE];
 } ocake_agent;
 
 /**
@@ -67,4 +67,4 @@ void ocake_create_message_round2(ocake_agent* bob,
 void ocake_create_message_round3(ocake_agent* alice, const uint8_t* in);
 const uint8_t* ocake_get_shared_secret(const ocake_agent* agent);
 
-#endif  // PAKE_CAKE_H
+#endif  // PQPAKE_CAKE_H

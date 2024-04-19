@@ -51,12 +51,12 @@ void cake_alice_bob_test() {
   const uint8_t* bob_ss = cake_get_shared_secret(bob);
 
   printf("Alice: ");
-  print_buffer(alice_ss, PAKE_SHARED_SECRET_SIZE);
+  print_buffer(alice_ss, PQPAKE_SHARED_SECRET_SIZE);
 
   printf("  Bob: ");
-  print_buffer(bob_ss, PAKE_SHARED_SECRET_SIZE);
+  print_buffer(bob_ss, PQPAKE_SHARED_SECRET_SIZE);
 
-  for (int i = 0; i < PAKE_SHARED_SECRET_SIZE; i++) {
+  for (int i = 0; i < PQPAKE_SHARED_SECRET_SIZE; i++) {
     if (alice_ss[i] != bob_ss[i]) {
       printf("alice_ss[%d] != bob_ss[%d]\n", i, i);
       exit(1);

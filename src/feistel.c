@@ -4,10 +4,10 @@
 #include <openssl/sha.h>
 #include <string.h>
 #include "constants.h"
-#define FEISTEL_ROUNDS 14
+#define ROUNDS 14
 
 /**
- * @param sym_key Symmetric key of size PAKE_SYM_KEY_SIZE (64 bytes)
+ * @param sym_key Symmetric key of size PQPAKE_SYM_KEY_SIZE (64 bytes)
  * @param message_size Size of the message to hash
  * @param message Buffer to hash. Size is {message_size}
  * @param hashed_message Operation result. Size is FEISTEL_HALF_MESSAGE_SIZE
@@ -18,7 +18,7 @@ void hash(const uint8_t* sym_key,
           const uint8_t* message,
           uint8_t* hashed_message) {
   const int hash_count = (int)ceil((float)message_size / SHA512_DIGEST_LENGTH);
-  const int input_string_size = 1 + PAKE_SYM_KEY_SIZE + message_size;
+  const int input_string_size = 1 + PQPAKE_SYM_KEY_SIZE + message_size;
 
   uint8_t hashing_result[hash_count * SHA512_DIGEST_LENGTH];
   memset(hashing_result, 0, hash_count * SHA512_DIGEST_LENGTH);
@@ -26,8 +26,8 @@ void hash(const uint8_t* sym_key,
   uint8_t input_string[input_string_size];
   memset(input_string, 0, input_string_size);
 
-  memcpy(input_string + 1, sym_key, PAKE_SYM_KEY_SIZE);
-  memcpy(input_string + 1 + PAKE_SYM_KEY_SIZE, message, message_size);
+  memcpy(input_string + 1, sym_key, PQPAKE_SYM_KEY_SIZE);
+  memcpy(input_string + 1 + PQPAKE_SYM_KEY_SIZE, message, message_size);
 
   for (int round = 0; round < hash_count; round++) {
     input_string[0] = round;
@@ -39,10 +39,10 @@ void hash(const uint8_t* sym_key,
   memcpy(hashed_message, hashing_result, message_size);
 }
 
-void pake_ic_feistel_encrypt(const uint8_t* sym_key,
-                             size_t message_size,
-                             const uint8_t* clear_message,
-                             uint8_t* encrypted_message) {
+void pqpake_ic_feistel_encrypt(const uint8_t* sym_key,
+                               size_t message_size,
+                               const uint8_t* clear_message,
+                               uint8_t* encrypted_message) {
   assert(message_size % 2 == 0 && "message_size must be even");
 
   const size_t half_size = message_size / 2;
@@ -53,7 +53,7 @@ void pake_ic_feistel_encrypt(const uint8_t* sym_key,
   memcpy(left, clear_message, half_size);
   memcpy(right, clear_message + half_size, half_size);
 
-  for (int i = 0; i < FEISTEL_ROUNDS; i++) {
+  for (int i = 0; i < ROUNDS; i++) {
     uint8_t hashed_right[half_size];
     hash(sym_key, half_size, right, hashed_right);
     uint8_t new_left[half_size];
@@ -76,10 +76,10 @@ void pake_ic_feistel_encrypt(const uint8_t* sym_key,
   memcpy(encrypted_message + half_size, right, half_size);
 }
 
-void pake_ic_feistel_decrypt(const uint8_t* sym_key,
-                             size_t message_size,
-                             const uint8_t* encrypted_message,
-                             uint8_t* clear_message) {
+void pqpake_ic_feistel_decrypt(const uint8_t* sym_key,
+                               size_t message_size,
+                               const uint8_t* encrypted_message,
+                               uint8_t* clear_message) {
   assert(message_size % 2 == 0 && "message_size must be even");
 
   const size_t half_size = message_size / 2;
@@ -90,7 +90,7 @@ void pake_ic_feistel_decrypt(const uint8_t* sym_key,
   memcpy(left, encrypted_message, half_size);
   memcpy(right, encrypted_message + half_size, half_size);
 
-  for (int i = 0; i < FEISTEL_ROUNDS; i++) {
+  for (int i = 0; i < ROUNDS; i++) {
     uint8_t hashed_left[half_size];
     hash(sym_key, half_size, left, hashed_left);
     uint8_t new_right[half_size];

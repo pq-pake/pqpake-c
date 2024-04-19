@@ -1,20 +1,21 @@
 #include "cake.h"
 #include <openssl/sha.h>
+#include <stdio.h>
 #include "ciphertext.h"
 #include "commons.h"
 #include "kyber1024.h"
 #include "pake.h"
 #include "publickey.h"
-#define ROUND1_MESSAGE_SIZE PAKE_EPK_SIZE
-#define ROUND2_MESSAGE_SIZE PAKE_ECT_SIZE
+#define ROUND1_MESSAGE_SIZE PQPAKE_EPK_SIZE
+#define ROUND2_MESSAGE_SIZE PQPAKE_ECT_SIZE
 
 /**
  * Generate the final secret from the CAKE protocol parameters
  *
  * @param final_secret output buffer
  * @param ssid Common session ID
- * @param epk Alice's encrypted public key. Size is PAKE_EPK_SIZE
- * @param ect Bob's encrypted cipher text. Size is PAKE_ECT_SIZE
+ * @param epk Alice's encrypted public key. Size is PQPAKE_EPK_SIZE
+ * @param ect Bob's encrypted cipher text. Size is PQPAKE_ECT_SIZE
  * @param secret Common Kyber caps/decaps secret.
  *               Size is PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES
  * @param alice_name Initiator agent name
@@ -31,7 +32,7 @@ void cake_generate_final_secret(uint8_t* final_secret,
                                 size_t alice_size,
                                 const uint8_t* bob_name,
                                 size_t bob_size) {
-  size_t max_buffer_size = sizeof(ssid) + PAKE_EPK_SIZE + PAKE_ECT_SIZE +
+  size_t max_buffer_size = sizeof(ssid) + PQPAKE_EPK_SIZE + PQPAKE_ECT_SIZE +
                            PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES + alice_size +
                            bob_size;
 
@@ -48,11 +49,11 @@ void cake_generate_final_secret(uint8_t* final_secret,
   memcpy(head, bob_name, bob_size);
   head += bob_size;
 
-  memcpy(head, epk, PAKE_EPK_SIZE);
-  head += PAKE_EPK_SIZE;
+  memcpy(head, epk, PQPAKE_EPK_SIZE);
+  head += PQPAKE_EPK_SIZE;
 
-  memcpy(head, ect, PAKE_ECT_SIZE);
-  head += PAKE_ECT_SIZE;
+  memcpy(head, ect, PQPAKE_ECT_SIZE);
+  head += PQPAKE_ECT_SIZE;
 
   memcpy(head, secret, PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES);
   head += PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES;
@@ -67,7 +68,7 @@ cake_agent* cake_create_alice(uint32_t session_id,
                               size_t password_size,
                               const uint8_t* alice_name,
                               size_t alice_size) {
-  pake_assert_constants();
+  pqpake_assert_constants();
 
   cake_agent* agent = malloc(sizeof(cake_agent));
   if (agent == NULL) {
@@ -76,7 +77,8 @@ cake_agent* cake_create_alice(uint32_t session_id,
   memset(agent, 0, sizeof(cake_agent));
 
   agent->session_id = session_id;
-  generate_symmetric_key(agent->sym_key, session_id, password, password_size);
+  pqpake_generate_symmetric_key(agent->sym_key, session_id, password,
+                                password_size);
 
   agent->alice_size = alice_size;
   agent->alice_name = malloc(alice_size);
@@ -97,7 +99,7 @@ cake_agent* cake_create_bob(uint32_t session_id,
                             size_t password_size,
                             const uint8_t* bob_name,
                             size_t bob_size) {
-  pake_assert_constants();
+  pqpake_assert_constants();
 
   cake_agent* agent = malloc(sizeof(cake_agent));
   if (agent == NULL) {
@@ -106,7 +108,8 @@ cake_agent* cake_create_bob(uint32_t session_id,
   memset(agent, 0, sizeof(cake_agent));
 
   agent->session_id = session_id;
-  generate_symmetric_key(agent->sym_key, session_id, password, password_size);
+  pqpake_generate_symmetric_key(agent->sym_key, session_id, password,
+                                password_size);
 
   agent->alice_size = 0;
   agent->alice_name = NULL;
@@ -150,7 +153,7 @@ void cake_create_message_round1(cake_agent* alice,
   /** alice cryptography */
 
   PQCLEAN_KYBER1024_CLEAN_crypto_kem_keypair(alice->pk, alice->sk);
-  if (pake_ic_publickey_encrypt(alice->sym_key, alice->pk, alice->epk) < 0) {
+  if (pqpake_ic_publickey_encrypt(alice->sym_key, alice->pk, alice->epk) < 0) {
     *out_size = 0;
     *out = NULL;
     return;
@@ -158,8 +161,8 @@ void cake_create_message_round1(cake_agent* alice,
 
   /** alice --> bob : encrypted pk and alice's name */
 
-  *out_size = sizeof(pake_header) + sizeof(cake_header) + ROUND1_MESSAGE_SIZE +
-              alice->alice_size;
+  *out_size = sizeof(pqpake_header) + sizeof(cake_header) +
+              ROUND1_MESSAGE_SIZE + alice->alice_size;
   *out = malloc(*out_size);
   if (*out == NULL) {
     *out_size = 0;
@@ -167,10 +170,10 @@ void cake_create_message_round1(cake_agent* alice,
   }
   memset(*out, 0, *out_size);
 
-  pake_header* pheader = (pake_header*)*out;
-  pheader->protocol = PAKE_PROTO_CAKE_KYBER1024;
+  pqpake_header* pheader = (pqpake_header*)*out;
+  pheader->protocol = PQPAKE_PROTO_CAKE_KYBER1024;
 
-  cake_header* cheader = (cake_header*)(*out + sizeof(pake_header));
+  cake_header* cheader = (cake_header*)(*out + sizeof(pqpake_header));
   cheader->round = 1;
   cheader->name_size = alice->alice_size;
 
@@ -187,14 +190,14 @@ void cake_create_message_round2(cake_agent* bob,
                                 size_t* out_size) {
   /** parsing incoming message */
 
-  const pake_header* in_pheader = (pake_header*)in;
-  if (in_pheader->protocol != PAKE_PROTO_CAKE_KYBER1024) {
+  const pqpake_header* in_pheader = (pqpake_header*)in;
+  if (in_pheader->protocol != PQPAKE_PROTO_CAKE_KYBER1024) {
     *out_size = 0;
     *out = NULL;
     return;
   }
 
-  const cake_header* in_cheader = (cake_header*)(in + sizeof(pake_header));
+  const cake_header* in_cheader = (cake_header*)(in + sizeof(pqpake_header));
   if (in_cheader->round != 1) {
     *out_size = 0;
     *out = NULL;
@@ -202,7 +205,8 @@ void cake_create_message_round2(cake_agent* bob,
   }
 
   const uint8_t* in_epk = (uint8_t*)in_cheader + sizeof(cake_header);
-  if (pake_ic_publickey_decrypt(bob->sym_key, in_epk, bob->pk) < 0) {
+  if (pqpake_ic_publickey_decrypt(bob->sym_key, in_epk, bob->pk) < 0) {
+    printf("cake_create_message_round2: pqpake_ic_publickey_decrypt failed\n");
     *out_size = 0;
     *out = NULL;
     return;
@@ -225,7 +229,7 @@ void cake_create_message_round2(cake_agent* bob,
   PQCLEAN_KYBER1024_CLEAN_crypto_kem_enc(bob_ct, bob_ss, bob->pk);
 
   uint8_t ect[ROUND2_MESSAGE_SIZE] = {0};
-  pake_ic_ciphertext_encrypt(bob->sym_key, bob_ct, ect);
+  pqpake_ic_ciphertext_encrypt(bob->sym_key, bob_ct, ect);
 
   cake_generate_final_secret(bob->ss, bob->session_id, in_epk, ect, bob_ss,
                              bob->alice_name, bob->alice_size, bob->bob_name,
@@ -233,8 +237,8 @@ void cake_create_message_round2(cake_agent* bob,
 
   /** bob --> alice : encrypted ct and bob's name */
 
-  *out_size = sizeof(pake_header) + sizeof(cake_header) + ROUND2_MESSAGE_SIZE +
-              bob->bob_size;
+  *out_size = sizeof(pqpake_header) + sizeof(cake_header) +
+              ROUND2_MESSAGE_SIZE + bob->bob_size;
   *out = malloc(*out_size);
   if (*out == NULL) {
     *out_size = 0;
@@ -242,10 +246,10 @@ void cake_create_message_round2(cake_agent* bob,
   }
   memset(*out, 0, *out_size);
 
-  pake_header* out_pheader = (pake_header*)*out;
-  out_pheader->protocol = PAKE_PROTO_CAKE_KYBER1024;
+  pqpake_header* out_pheader = (pqpake_header*)*out;
+  out_pheader->protocol = PQPAKE_PROTO_CAKE_KYBER1024;
 
-  cake_header* out_cheader = (cake_header*)(*out + sizeof(pake_header));
+  cake_header* out_cheader = (cake_header*)(*out + sizeof(pqpake_header));
   out_cheader->round = 2;
   out_cheader->name_size = bob->bob_size;
 
@@ -257,19 +261,19 @@ void cake_create_message_round2(cake_agent* bob,
 }
 
 void cake_create_message_round3(cake_agent* alice, const uint8_t* in) {
-  const pake_header* pheader = (pake_header*)in;
-  if (pheader->protocol != PAKE_PROTO_CAKE_KYBER1024) {
+  const pqpake_header* pheader = (pqpake_header*)in;
+  if (pheader->protocol != PQPAKE_PROTO_CAKE_KYBER1024) {
     return;
   }
 
-  const cake_header* cheader = (cake_header*)(in + sizeof(pake_header));
+  const cake_header* cheader = (cake_header*)(in + sizeof(pqpake_header));
   if (cheader->round != 2) {
     return;
   }
 
   const uint8_t* ect = (uint8_t*)cheader + sizeof(cake_header);
   uint8_t alice_ct[PQCLEAN_KYBER1024_CLEAN_CRYPTO_CIPHERTEXTBYTES] = {0};
-  pake_ic_ciphertext_decrypt(alice->sym_key, ect, alice_ct);
+  pqpake_ic_ciphertext_decrypt(alice->sym_key, ect, alice_ct);
 
   alice->bob_size = cheader->name_size;
   alice->bob_name = malloc(alice->bob_size);

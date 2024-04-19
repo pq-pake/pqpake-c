@@ -5,8 +5,8 @@
 #include "kyber1024.h"
 #include "pake.h"
 #include "publickey.h"
-#define ROUND1_MESSAGE_SIZE PAKE_EPK_SIZE
-#define ROUND2_MESSAGE_SIZE PAKE_CT_SIZE
+#define ROUND1_MESSAGE_SIZE PQPAKE_EPK_SIZE
+#define ROUND2_MESSAGE_SIZE PQPAKE_CT_SIZE
 #define OCAKE_AUTH_SIZE 32
 
 /**
@@ -14,8 +14,8 @@
  *
  * @param final_secret output buffer
  * @param ssid Common session ID
- * @param epk Alice's encrypted public key. Size is PAKE_EPK_SIZE
- * @param ct Bob's cipher text. Size is PAKE_CT_SIZE
+ * @param epk Alice's encrypted public key. Size is PQPAKE_EPK_SIZE
+ * @param ct Bob's cipher text. Size is PQPAKE_CT_SIZE
  * @param secret Common Kyber caps/decaps secret.
  *               Size is PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES
  * @param auth Authentication tag. Size is OCAKE_AUTH_SIZE
@@ -34,7 +34,7 @@ void ocake_generate_final_secret(uint8_t* final_secret,
                                  size_t alice_size,
                                  const uint8_t* bob_name,
                                  size_t bob_size) {
-  size_t max_buffer_size = sizeof(ssid) + PAKE_EPK_SIZE + PAKE_CT_SIZE +
+  size_t max_buffer_size = sizeof(ssid) + PQPAKE_EPK_SIZE + PQPAKE_CT_SIZE +
                            PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES +
                            OCAKE_AUTH_SIZE + alice_size + bob_size;
 
@@ -51,11 +51,11 @@ void ocake_generate_final_secret(uint8_t* final_secret,
   memcpy(head, bob_name, bob_size);
   head += bob_size;
 
-  memcpy(head, epk, PAKE_EPK_SIZE);
-  head += PAKE_EPK_SIZE;
+  memcpy(head, epk, PQPAKE_EPK_SIZE);
+  head += PQPAKE_EPK_SIZE;
 
-  memcpy(head, ct, PAKE_CT_SIZE);
-  head += PAKE_CT_SIZE;
+  memcpy(head, ct, PQPAKE_CT_SIZE);
+  head += PQPAKE_CT_SIZE;
 
   memcpy(head, auth, OCAKE_AUTH_SIZE);
   head += OCAKE_AUTH_SIZE;
@@ -75,8 +75,8 @@ void ocake_generate_final_secret(uint8_t* final_secret,
  * @param ssid Common session ID
  * @param password Password
  * @param password_size Password size
- * @param epk Alice's encrypted public key. Size is PAKE_EPK_SIZE
- * @param ct Bob's cipher text. Size is PAKE_CT_SIZE
+ * @param epk Alice's encrypted public key. Size is PQPAKE_EPK_SIZE
+ * @param ct Bob's cipher text. Size is PQPAKE_CT_SIZE
  * @param secret Common Kyber caps/decaps secret.
  *               Size is PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES
  * @param alice_name Initiator agent name
@@ -95,9 +95,9 @@ void generate_auth_tag(uint8_t* auth_tag,
                        size_t alice_size,
                        const uint8_t* bob_name,
                        size_t bob_size) {
-  size_t max_buffer_size = sizeof(ssid) + password_size + PAKE_EPK_SIZE +
-                           PAKE_CT_SIZE + PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES +
-                           alice_size + bob_size;
+  size_t max_buffer_size =
+      sizeof(ssid) + password_size + PQPAKE_EPK_SIZE + PQPAKE_CT_SIZE +
+      PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES + alice_size + bob_size;
 
   uint8_t base_string[max_buffer_size];
 
@@ -115,11 +115,11 @@ void generate_auth_tag(uint8_t* auth_tag,
   memcpy(head, password, password_size);
   head += password_size;
 
-  memcpy(head, epk, PAKE_EPK_SIZE);
-  head += PAKE_EPK_SIZE;
+  memcpy(head, epk, PQPAKE_EPK_SIZE);
+  head += PQPAKE_EPK_SIZE;
 
-  memcpy(head, ct, PAKE_CT_SIZE);
-  head += PAKE_CT_SIZE;
+  memcpy(head, ct, PQPAKE_CT_SIZE);
+  head += PQPAKE_CT_SIZE;
 
   memcpy(head, secret, PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES);
   head += PQCLEAN_KYBER1024_CLEAN_CRYPTO_BYTES;
@@ -134,7 +134,7 @@ ocake_agent* ocake_create_alice(uint32_t session_id,
                                 size_t password_size,
                                 const uint8_t* alice_name,
                                 size_t alice_size) {
-  pake_assert_constants();
+  pqpake_assert_constants();
 
   ocake_agent* agent = malloc(sizeof(ocake_agent));
   if (agent == NULL) {
@@ -143,7 +143,8 @@ ocake_agent* ocake_create_alice(uint32_t session_id,
   memset(agent, 0, sizeof(ocake_agent));
 
   agent->session_id = session_id;
-  generate_symmetric_key(agent->sym_key, session_id, password, password_size);
+  pqpake_generate_symmetric_key(agent->sym_key, session_id, password,
+                                password_size);
 
   agent->password_size = password_size;
   agent->password = malloc(password_size);
@@ -172,7 +173,7 @@ ocake_agent* ocake_create_bob(uint32_t session_id,
                               size_t password_size,
                               const uint8_t* bob_name,
                               size_t bob_size) {
-  pake_assert_constants();
+  pqpake_assert_constants();
 
   ocake_agent* agent = malloc(sizeof(ocake_agent));
   if (agent == NULL) {
@@ -181,7 +182,8 @@ ocake_agent* ocake_create_bob(uint32_t session_id,
   memset(agent, 0, sizeof(ocake_agent));
 
   agent->session_id = session_id;
-  generate_symmetric_key(agent->sym_key, session_id, password, password_size);
+  pqpake_generate_symmetric_key(agent->sym_key, session_id, password,
+                                password_size);
 
   agent->password_size = password_size;
   agent->password = malloc(password_size);
@@ -239,7 +241,7 @@ void ocake_create_message_round1(ocake_agent* alice,
   /** alice cryptography */
 
   PQCLEAN_KYBER1024_CLEAN_crypto_kem_keypair(alice->pk, alice->sk);
-  if (pake_ic_publickey_encrypt(alice->sym_key, alice->pk, alice->epk) < 0) {
+  if (pqpake_ic_publickey_encrypt(alice->sym_key, alice->pk, alice->epk) < 0) {
     *out_size = 0;
     *out = NULL;
     return;
@@ -247,8 +249,8 @@ void ocake_create_message_round1(ocake_agent* alice,
 
   /** alice --> bob : encrypted pk and alice's name */
 
-  *out_size = sizeof(pake_header) + sizeof(ocake_header) + ROUND1_MESSAGE_SIZE +
-              alice->alice_size;
+  *out_size = sizeof(pqpake_header) + sizeof(ocake_header) +
+              ROUND1_MESSAGE_SIZE + alice->alice_size;
   *out = malloc(*out_size);
   if (*out == NULL) {
     *out_size = 0;
@@ -256,10 +258,10 @@ void ocake_create_message_round1(ocake_agent* alice,
   }
   memset(*out, 0, *out_size);
 
-  pake_header* pheader = (pake_header*)*out;
-  pheader->protocol = PAKE_PROTO_OCAKE_KYBER1024;
+  pqpake_header* pheader = (pqpake_header*)*out;
+  pheader->protocol = PQPAKE_PROTO_OCAKE_KYBER1024;
 
-  ocake_header* cheader = (ocake_header*)(*out + sizeof(pake_header));
+  ocake_header* cheader = (ocake_header*)(*out + sizeof(pqpake_header));
   cheader->round = 1;
   cheader->name_size = alice->alice_size;
 
@@ -276,14 +278,14 @@ void ocake_create_message_round2(ocake_agent* bob,
                                  size_t* out_size) {
   /** parsing incoming message */
 
-  const pake_header* in_pheader = (pake_header*)in;
-  if (in_pheader->protocol != PAKE_PROTO_OCAKE_KYBER1024) {
+  const pqpake_header* in_pheader = (pqpake_header*)in;
+  if (in_pheader->protocol != PQPAKE_PROTO_OCAKE_KYBER1024) {
     *out_size = 0;
     *out = NULL;
     return;
   }
 
-  const ocake_header* in_cheader = (ocake_header*)(in + sizeof(pake_header));
+  const ocake_header* in_cheader = (ocake_header*)(in + sizeof(pqpake_header));
   if (in_cheader->round != 1) {
     *out_size = 0;
     *out = NULL;
@@ -291,7 +293,7 @@ void ocake_create_message_round2(ocake_agent* bob,
   }
 
   const uint8_t* in_epk = (uint8_t*)in_cheader + sizeof(ocake_header);
-  if (pake_ic_publickey_decrypt(bob->sym_key, in_epk, bob->pk) < 0) {
+  if (pqpake_ic_publickey_decrypt(bob->sym_key, in_epk, bob->pk) < 0) {
     *out_size = 0;
     *out = NULL;
     return;
@@ -324,8 +326,8 @@ void ocake_create_message_round2(ocake_agent* bob,
 
   /** bob --> alice : encrypted ct and bob's name */
 
-  *out_size = sizeof(pake_header) + sizeof(ocake_header) + ROUND2_MESSAGE_SIZE +
-              bob->bob_size + OCAKE_AUTH_SIZE;
+  *out_size = sizeof(pqpake_header) + sizeof(ocake_header) +
+              ROUND2_MESSAGE_SIZE + bob->bob_size + OCAKE_AUTH_SIZE;
   *out = malloc(*out_size);
   if (*out == NULL) {
     *out_size = 0;
@@ -333,10 +335,10 @@ void ocake_create_message_round2(ocake_agent* bob,
   }
   memset(*out, 0, *out_size);
 
-  pake_header* out_pheader = (pake_header*)*out;
-  out_pheader->protocol = PAKE_PROTO_OCAKE_KYBER1024;
+  pqpake_header* out_pheader = (pqpake_header*)*out;
+  out_pheader->protocol = PQPAKE_PROTO_OCAKE_KYBER1024;
 
-  ocake_header* out_cheader = (ocake_header*)(*out + sizeof(pake_header));
+  ocake_header* out_cheader = (ocake_header*)(*out + sizeof(pqpake_header));
   out_cheader->round = 2;
   out_cheader->name_size = bob->bob_size;
 
@@ -351,12 +353,12 @@ void ocake_create_message_round2(ocake_agent* bob,
 }
 
 void ocake_create_message_round3(ocake_agent* alice, const uint8_t* in) {
-  const pake_header* pheader = (pake_header*)in;
-  if (pheader->protocol != PAKE_PROTO_OCAKE_KYBER1024) {
+  const pqpake_header* pheader = (pqpake_header*)in;
+  if (pheader->protocol != PQPAKE_PROTO_OCAKE_KYBER1024) {
     return;
   }
 
-  const ocake_header* cheader = (ocake_header*)(in + sizeof(pake_header));
+  const ocake_header* cheader = (ocake_header*)(in + sizeof(pqpake_header));
   if (cheader->round != 2) {
     return;
   }
