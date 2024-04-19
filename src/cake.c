@@ -150,7 +150,11 @@ void cake_create_message_round1(cake_agent* alice,
   /** alice cryptography */
 
   PQCLEAN_KYBER1024_CLEAN_crypto_kem_keypair(alice->pk, alice->sk);
-  pake_ic_publickey_encrypt(alice->sym_key, alice->pk, alice->epk);
+  if (pake_ic_publickey_encrypt(alice->sym_key, alice->pk, alice->epk) < 0) {
+    *out_size = 0;
+    *out = NULL;
+    return;
+  }
 
   /** alice --> bob : encrypted pk and alice's name */
 
@@ -198,7 +202,11 @@ void cake_create_message_round2(cake_agent* bob,
   }
 
   const uint8_t* in_epk = (uint8_t*)in_cheader + sizeof(cake_header);
-  pake_ic_publickey_decrypt(bob->sym_key, in_epk, bob->pk);
+  if (pake_ic_publickey_decrypt(bob->sym_key, in_epk, bob->pk) < 0) {
+    *out_size = 0;
+    *out = NULL;
+    return;
+  }
 
   bob->alice_size = in_cheader->name_size;
   bob->alice_name = malloc(bob->alice_size);
