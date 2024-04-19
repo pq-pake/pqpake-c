@@ -1,4 +1,4 @@
-#include <pake/ocake.h>
+#include <pqpake/ocake.h>
 #include <stdio.h>
 #include <stdlib.h>
 

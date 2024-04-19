@@ -1,4 +1,4 @@
-#include <pake/cake.h>
+#include <pqpake/cake.h>
 #include <stdio.h>
 #include <stdlib.h>
 

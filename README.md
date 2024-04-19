@@ -1,4 +1,4 @@
-# PAKE C Implementation
+# Post-quantum PAKE C Implementation
 
 This repository contains the C implementation of the post-quantum password-authenticated key exchange algorithms CAKE and OCAKE.
 
