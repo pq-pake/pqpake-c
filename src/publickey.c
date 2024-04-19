@@ -49,6 +49,7 @@ int pake_ic_publickey_decrypt(const uint8_t* sym_key,
   // memset(pk, 0, PAKE_PK_SIZE);
 
   uint8_t temp_pk[PAKE_PK_SIZE];
+  memcpy(temp_pk, epk, PQPAKE_PK_SIZE);
 
   int found_in_range = 0;
 
@@ -57,7 +58,7 @@ int pake_ic_publickey_decrypt(const uint8_t* sym_key,
     // feistel_decrypt doesn't read the input buffer after writing to the output
     // buffer
     // however it avoids having to allocate a new buffer
-    pake_ic_feistel_decrypt(sym_key, VALUE_SIZE, epk, temp_pk);
+    pqpake_ic_feistel_decrypt(sym_key, VALUE_SIZE, temp_pk, temp_pk);
 
     if (!pake_ic_value_is_not_in_range(temp_pk) && !found_in_range) {
       found_in_range = 1;
