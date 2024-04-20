@@ -1,5 +1,5 @@
-#ifndef PQPAKE_CAKE_H
-#define PQPAKE_CAKE_H
+#ifndef PQPAKE_OCAKE_H
+#define PQPAKE_OCAKE_H
 #include <stdint.h>
 #include <string.h>
 #include "constants.h"
@@ -67,4 +67,4 @@ void ocake_create_message_round2(ocake_agent* bob,
 void ocake_create_message_round3(ocake_agent* alice, const uint8_t* in);
 const uint8_t* ocake_get_shared_secret(const ocake_agent* agent);
 
-#endif  // PQPAKE_CAKE_H
+#endif  // PQPAKE_OCAKE_H
