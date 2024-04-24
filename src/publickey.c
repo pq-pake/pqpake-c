@@ -1,5 +1,4 @@
 #include "publickey.h"
-#include <stdio.h>
 #include <string.h>
 #include "constants.h"
 #include "encode.h"
@@ -18,7 +17,7 @@ int pqpake_ic_publickey_encrypt(const uint8_t* sym_key,
   uint8_t temp_epk[PQPAKE_EPK_SIZE];
   pqpake_ic_encode(pk, temp_epk);
 
-  int found_in_range = 0;
+  int finished_encryption = 0;
 
   for (int i = 0; i < ROUNDS; i++) {
     // note: this is a bit dangerous given that we assume that we assume
@@ -26,13 +25,17 @@ int pqpake_ic_publickey_encrypt(const uint8_t* sym_key,
     // output buffer however it avoids having to allocate a new buffer
     pqpake_ic_feistel_encrypt(sym_key, VALUE_SIZE, temp_epk, temp_epk);
 
-    if (!pqpake_ic_value_is_not_in_range(temp_epk) && !found_in_range) {
-      found_in_range = 1;
-      memcpy(epk, temp_epk, PQPAKE_EPK_SIZE);
+    int is_in_range = !pqpake_ic_value_is_not_in_range(temp_epk);
+
+    int epk_mask = (~finished_encryption & is_in_range) ? 0xff : 0x00;
+    for (int j = 0; j < PQPAKE_EPK_SIZE; j++) {
+      epk[j] = (epk[j] & epk_mask) | (temp_epk[j] & ~epk_mask);
     }
+
+    finished_encryption |= is_in_range;
   }
 
-  if (!found_in_range) {
+  if (!finished_encryption) {
     return -1;
   }
 
@@ -51,7 +54,7 @@ int pqpake_ic_publickey_decrypt(const uint8_t* sym_key,
   uint8_t temp_pk[PQPAKE_PK_SIZE];
   memcpy(temp_pk, epk, PQPAKE_PK_SIZE);
 
-  int found_in_range = 0;
+  int finished_encryption = 0;
 
   for (int i = 0; i < ROUNDS; i++) {
     // note: this is a bit dangerous given that we assume that we assume
@@ -60,13 +63,18 @@ int pqpake_ic_publickey_decrypt(const uint8_t* sym_key,
     // however it avoids having to allocate a new buffer
     pqpake_ic_feistel_decrypt(sym_key, VALUE_SIZE, temp_pk, temp_pk);
 
-    if (!pqpake_ic_value_is_not_in_range(temp_pk) && !found_in_range) {
-      found_in_range = 1;
-      memcpy(pk, temp_pk, PQPAKE_PK_SIZE);
+    int is_in_range = !pqpake_ic_value_is_not_in_range(temp_pk);
+
+    int pk_mask = (~finished_encryption & is_in_range) ? 0xff : 0x00;
+
+    for (int j = 0; j < PQPAKE_PK_SIZE; j++) {
+      pk[j] = (pk[j] & pk_mask) | (temp_pk[j] & ~pk_mask);
     }
+
+    finished_encryption |= is_in_range;
   }
 
-  if (!found_in_range) {
+  if (!finished_encryption) {
     return -1;
   }
 
